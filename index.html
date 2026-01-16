@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>iPhone</title>
+    <style>
+        :root { --ios-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: var(--ios-font); overflow: hidden; background: #000; }
+
+        /* Wallpaper */
+        .wallpaper {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: url('wall.jpg') no-repeat center center; background-size: cover;
+            z-index: 1; transition: transform 0.6s cubic-bezier(0.2, 1, 0.2, 1);
+        }
+
+        /* Lock Screen */
+        #lock-screen {
+            position: absolute; width: 100%; height: 100%; z-index: 10;
+            display: flex; flex-direction: column; align-items: center; color: white; padding-top: 60px;
+        }
+        #lock-time { font-size: 80px; font-weight: 200; letter-spacing: -2px; }
+        #lock-date { font-size: 22px; margin-top: -10px; font-weight: 400; }
+
+        /* Passcode Blur */
+        #passcode-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            z-index: 20; display: none; flex-direction: column; align-items: center; justify-content: center; color: white;
+        }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px 25px; margin-top: 30px; }
+        .key {
+            width: 75px; height: 75px; border-radius: 50%; background: rgba(255,255,255,0.15);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 32px;
+        }
+        .key span { font-size: 10px; letter-spacing: 1px; font-weight: 600; margin-top: -2px; }
+        .dots { display: flex; gap: 15px; margin-bottom: 30px; }
+        .dot { width: 12px; height: 12px; border: 1.5px solid white; border-radius: 50%; }
+        .dot.active { background: white; }
+
+        /* Home Screen */
+        #home-screen { position: absolute; width: 100%; height: 100%; z-index: 5; display: none; padding: 60px 25px; }
+        .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 25px 15px; }
+        .app-icon { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+        .app-icon img { width: 60px; height: 60px; border-radius: 14px; margin-bottom: 5px; }
+
+        .dock {
+            position: absolute; bottom: 20px; left: 15px; right: 15px; height: 95px;
+            background: rgba(255,255,255,0.25); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: 35px; display: flex; justify-content: space-around; align-items: center; padding: 0 10px;
+        }
+        .dock img { width: 60px; height: 60px; border-radius: 14px; }
+
+        /* Real Notes App UI */
+        #notes-app {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100; display: none; flex-direction: column; color: white;
+        }
+        .notes-list-view { padding: 50px 20px; display: block; }
+        .notes-large-title { font-size: 34px; font-weight: 700; margin-bottom: 10px; }
+        .notes-top-icons { position: absolute; top: 50px; right: 20px; color: #d4a017; font-size: 20px; }
+        
+        #notes-editor-view { display: none; flex-direction: column; height: 100%; background: #000; }
+        .editor-header { padding: 50px 20px 10px; display: flex; justify-content: space-between; color: #d4a017; font-size: 17px; }
+        #notes-content {
+            flex: 1; padding: 20px; font-size: 19px; line-height: 1.4; outline: none;
+            caret-color: #d4a017; overflow-y: auto; color: #fff;
+        }
+        /* Style for the first line (Title) */
+        #notes-content:first-line { font-weight: 700; font-size: 24px; }
+
+        .notes-footer {
+            padding: 15px 25px 35px; display: flex; justify-content: flex-end;
+            background: #000; border-top: 0.5px solid #333;
+        }
+        .create-icon { color: #d4a017; font-size: 28px; cursor: pointer; }
+    </style>
+</head>
+<body onload="init()">
+
+    <div class="wallpaper" id="wall"></div>
+
+    <div id="lock-screen" onclick="showPasscode()">
+        <div id="lock-time">12:00</div>
+        <div id="lock-date">Friday, 16 January</div>
+    </div>
+
+    <div id="passcode-overlay">
+        <div style="font-weight: 600; margin-bottom: 20px;">Enter Passcode</div>
+        <div class="dots" id="dots-container">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="keypad">
+            <div class="key" onclick="tapKey('1')">1<span>&nbsp;</span></div>
+            <div class="key" onclick="tapKey('2')">2<span>ABC</span></div>
+            <div class="key" onclick="tapKey('3')">3<span>DEF</span></div>
+            <div class="key" onclick="tapKey('4')">4<span>GHI</span></div>
+            <div class="key" onclick="tapKey('5')">5<span>JKL</span></div>
+            <div class="key" onclick="tapKey('6')">6<span>MNO</span></div>
+            <div class="key" onclick="tapKey('7')">7<span>PQRS</span></div>
+            <div class="key" onclick="tapKey('8')">8<span>TUV</span></div>
+            <div class="key" onclick="tapKey('9')">9<span>WXYZ</span></div>
+            <div></div><div class="key" onclick="tapKey('0')">0</div>
+        </div>
+        <div style="margin-top: 50px; font-size: 15px;" onclick="hidePasscode()">Cancel</div>
+    </div>
+
+    <div id="home-screen">
+        <div class="icon-grid">
+            <div class="app-icon"><img src="pic1.WEBP"><span>Music</span></div>
+            <div class="app-icon"><img src="pic2.WEBP"><span>Clock</span></div>
+            <div class="app-icon" onclick="openNotesApp()"><img src="pic3.WEBP"><span>Notes</span></div>
+            <div class="app-icon"><img src="pic4.WEBP"><span>Safari</span></div>
+            <div class="app-icon"><img src="pic5.PNG"><span>Wallet</span></div>
+            <div class="app-icon"><img src="pic6.PNG"><span>Reminders</span></div>
+            <div class="app-icon"><img src="pic7.PNG"><span>Settings</span></div>
+            <div class="app-icon"><img src="pic8.PNG"><span>Weather</span></div>
+            <div class="app-icon"><img src="pic9.PNG"><span>iTunes</span></div>
+        </div>
+        <div class="dock">
+            <img src="pic4.WEBP" onclick="alert('Safari')">
+            <img src="pic3.WEBP" onclick="openNotesApp()">
+            <img src="pic1.WEBP">
+            <img src="pic9.PNG">
+        </div>
+    </div>
+
+    <div id="notes-app">
+        <div id="notes-list-view" class="notes-list-view">
+            <div class="notes-top-icons">⋯</div>
+            <div class="notes-large-title">Notes</div>
+            <div style="color: #888; margin-top: 100px; text-align: center;">No Notes</div>
+            <div style="position: absolute; bottom: 35px; right: 25px;" onclick="createNewNote()">
+                <span class="create-icon">📝</span>
+            </div>
+        </div>
+
+        <div id="notes-editor-view">
+            <div class="editor-header">
+                <span onclick="backToList()">&lt; Notes</span>
+                <span onclick="backToList()">Done</span>
+            </div>
+            <div id="notes-content" contenteditable="true" oninput="saveRawNote()"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPasscode = "";
+        let secretInput = "";
+
+        function init() {
+            updateTime();
+            setInterval(updateTime, 1000);
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const h = now.getHours() % 12 || 12;
+            const m = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('lock-time').innerText = `${h}:${m}`;
+            const opt = { weekday: 'long', day: 'numeric', month: 'long' };
+            document.getElementById('lock-date').innerText = now.toLocaleDateString('en-US', opt);
+        }
+
+        function showPasscode() { document.getElementById('passcode-overlay').style.display = 'flex'; }
+        function hidePasscode() { 
+            document.getElementById('passcode-overlay').style.display = 'none'; 
+            currentPasscode = ""; 
+            updateDots(); 
+        }
+
+        function tapKey(n) {
+            if (currentPasscode.length < 4) {
+                currentPasscode += n;
+                updateDots();
+                if (currentPasscode.length === 4) validate();
+            }
+        }
+
+        function updateDots() {
+            const dots = document.querySelectorAll('.dot');
+            dots.forEach((d, i) => d.classList.toggle('active', i < currentPasscode.length));
+        }
+
+        function validate() {
+            let translated = "";
+            for (let char of currentPasscode) {
+                let n = parseInt(char);
+                translated += (n === 0) ? "9" : (n - 1).toString();
+            }
+            
+            const dd = parseInt(translated.substring(0,2));
+            const mmOrDay = parseInt(translated.substring(2,4));
+
+            if ((dd >= 1 && dd <= 31 && mmOrDay >= 1 && mmOrDay <= 12) || (mmOrDay === 80)) {
+                secretInput = translated;
+                unlock();
+            } else {
+                currentPasscode = "";
+                setTimeout(updateDots, 300);
+            }
+        }
+
+        function unlock() {
+            document.getElementById('passcode-overlay').style.display = 'none';
+            document.getElementById('lock-screen').style.display = 'none';
+            document.getElementById('home-screen').style.display = 'block';
+            document.getElementById('wall').style.transform = 'scale(1.15)';
+        }
+
+        function openNotesApp() {
+            document.getElementById('notes-app').style.display = 'flex';
+        }
+
+        function createNewNote() {
+            document.getElementById('notes-list-view').style.display = 'none';
+            document.getElementById('notes-editor-view').style.display = 'flex';
+            
+            let stored = localStorage.getItem('rawNote') || "";
+            
+            // Apply Transformations
+            const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const days = { 12:"Monday", 23:"Tuesday", 34:"Wednesday", 45:"Thursday", 56:"Friday", 67:"Saturday", 78:"Sunday" };
+
+            const dd = parseInt(secretInput.substring(0,2));
+            const mm = parseInt(secretInput.substring(2,4));
+
+            if (mm <= 12) {
+                stored = stored.replace(/ddmm/g, `${dd} ${months[mm-1]}`);
+            } else if (mm === 80) {
+                stored = stored.replace(/dddd/g, days[dd] || "");
+            }
+
+            document.getElementById('notes-content').innerText = stored;
+            document.getElementById('notes-content').focus();
+        }
+
+        function saveRawNote() {
+            const text = document.getElementById('notes-content').innerText;
+            // Only save as template if it still contains the trigger words
+            if (text.includes("ddmm") || text.includes("dddd")) {
+                localStorage.setItem('rawNote', text);
+            }
+        }
+
+        function backToList() {
+            document.getElementById('notes-list-view').style.display = 'block';
+            document.getElementById('notes-editor-view').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
