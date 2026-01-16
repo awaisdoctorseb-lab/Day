@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>iOS Mentalism App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+
+body {
+  height: 100vh;
+  overflow: hidden;
+  background: black;
+}
+
+/* ---------- WALLPAPER ---------- */
+.wallpaper {
+  position: fixed;
+  inset: 0;
+  background: url('wall.jpg') center/cover no-repeat;
+}
+
+/* ---------- LOCK SCREEN ---------- */
+#lockscreen {
+  position: absolute;
+  inset: 0;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 60px 0 30px;
+}
+
+#time {
+  font-size: 72px;
+  font-weight: 300;
+}
+
+#date {
+  font-size: 20px;
+  margin-top: 6px;
+}
+
+#swipe {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* ---------- KEYPAD ---------- */
+#keypad {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(20px);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 120px;
+}
+
+#dots {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid white;
+}
+
+.dot.filled {
+  background: white;
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(3, 80px);
+  gap: 20px;
+}
+
+.key {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 1px solid white;
+  color: white;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- HOME ---------- */
+#home {
+  position: absolute;
+  inset: 0;
+  display: none;
+  padding: 60px 20px 100px;
+}
+
+.icons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 25px;
+}
+
+.app {
+  text-align: center;
+  color: white;
+  font-size: 12px;
+}
+
+.app img {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+}
+
+#dock {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+}
+
+#dock img {
+  width: 100%;
+}
+
+/* ---------- NOTES ---------- */
+#notes {
+  position: absolute;
+  inset: 0;
+  background: white;
+  display: none;
+  flex-direction: column;
+}
+
+#notes textarea {
+  flex: 1;
+  border: none;
+  padding: 20px;
+  font-size: 18px;
+  outline: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="wallpaper"></div>
+
+<div id="lockscreen">
+  <div>
+    <div id="time"></div>
+    <div id="date"></div>
+  </div>
+  <div id="swipe">Swipe up to unlock</div>
+</div>
+
+<div id="keypad">
+  <div id="dots"></div>
+  <div class="keys"></div>
+</div>
+
+<div id="home">
+  <div class="icons">
+    <div class="app"><img src="pic1.WEBP"><div>iTunes</div></div>
+    <div class="app"><img src="pic2.WEBP"><div>Clock</div></div>
+    <div class="app" onclick="openNotes()"><img src="pic3.WEBP"><div>Notes</div></div>
+    <div class="app"><img src="pic4.WEBP"><div>Safari</div></div>
+    <div class="app"><img src="pic5.PNG"><div>Wallet</div></div>
+    <div class="app"><img src="pic6.PNG"><div>Reminders</div></div>
+    <div class="app"><img src="pic7.PNG"><div>Settings</div></div>
+    <div class="app"><img src="pic8.PNG"><div>Weather</div></div>
+    <div class="app"><img src="pic9.PNG"><div>Music</div></div>
+  </div>
+  <div id="dock"><img src="bar.jpg"></div>
+</div>
+
+<div id="notes">
+  <textarea id="noteText"></textarea>
+</div>
+
+<script>
+/* ---------- TIME ---------- */
+function updateTime() {
+  const now = new Date();
+  document.getElementById('time').textContent =
+    now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  document.getElementById('date').textContent =
+    now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+/* ---------- KEYPAD ---------- */
+const keypad = document.querySelector('.keys');
+const dots = document.getElementById('dots');
+let input = '';
+
+for (let i = 0; i < 4; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  dots.appendChild(d);
+}
+
+for (let i = 1; i <= 9; i++) addKey(i);
+addKey(0);
+
+function addKey(n) {
+  const k = document.createElement('div');
+  k.className = 'key';
+  k.textContent = n;
+  k.onclick = () => press(n);
+  keypad.appendChild(k);
+}
+
+function press(n) {
+  if (input.length >= 4) return;
+  input += n;
+  dots.children[input.length - 1].classList.add('filled');
+  if (input.length === 4) setTimeout(unlock, 300);
+}
+
+function decode(code) {
+  return code.split('').map(d => d === '0' ? '9' : String(+d - 1)).join('');
+}
+
+/* ---------- UNLOCK LOGIC ---------- */
+function unlock() {
+  const decoded = decode(input);
+  const dd = Number(decoded.slice(0,2));
+  const mm = Number(decoded.slice(2,4));
+
+  const weekdayMap = {
+    "0179":"Monday","1279":"Tuesday","2379":"Wednesday",
+    "3479":"Thursday","4579":"Friday","5679":"Saturday","6779":"Monday"
+  };
+
+  let valid = false;
+  let secrets = {};
+
+  if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
+    secrets.day = dd;
+    secrets.month = ["","January","February","March","April","May","June","July","August","September","October","November","December"][mm];
+    valid = true;
+  }
+
+  if (input.endsWith("80")) {
+    const wd = weekdayMap[decoded];
+    if (!wd) return reset();
+    secrets.weekday = wd;
+    valid = true;
+  }
+
+  if (!valid) return reset();
+
+  applySecrets(secrets);
+  document.getElementById('keypad').style.display = 'none';
+  document.getElementById('lockscreen').style.display = 'none';
+  document.getElementById('home').style.display = 'block';
+}
+
+function reset() {
+  input = '';
+  [...dots.children].forEach(d => d.classList.remove('filled'));
+}
+
+/* ---------- NOTES ---------- */
+const textarea = document.getElementById('noteText');
+textarea.value = localStorage.getItem('note') || '';
+
+textarea.oninput = () => localStorage.setItem('note', textarea.value);
+
+function openNotes() {
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('notes').style.display = 'flex';
+}
+
+function applySecrets(s) {
+  let t = textarea.value;
+  if (s.day) t = t.replace(/\bdd\b/g, s.day);
+  if (s.month) t = t.replace(/\bmm\b/g, s.month);
+  if (s.weekday) t = t.replace(/\bdddd\b/g, s.weekday);
+  textarea.value = t;
+  localStorage.setItem('note', t);
+}
+
+/* ---------- SWIPE ---------- */
+document.getElementById('lockscreen').onclick = () =>
+  document.getElementById('keypad').style.display = 'flex';
+</script>
+
+</body>
+</html>
